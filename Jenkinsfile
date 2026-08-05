@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    triggers {
+        pollSCM('H/1 * * * *')
+    }
+
     environment {
         ANSIBLE_CONFIG = "${WORKSPACE}/ansible/ansible.cfg"
     }
@@ -93,3 +97,5 @@ pipeline {
         }
     }
 }
+
+
