@@ -1,0 +1,20 @@
+---
+- name: Install Apache
+  ansible.builtin.dnf:
+    name: "{{ web_package }}"
+    state: present
+
+- name: Deploy web page
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: "{{ web_root }}/index.html"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart Apache
+
+- name: Enable and start Apache
+  ansible.builtin.systemd:
+    name: "{{ web_service }}"
+    enabled: true
+    state: started

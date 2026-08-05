@@ -1,0 +1,7 @@
+---
+- name: Deploy DevOps WebApp
+  hosts: webservers
+  become: true
+
+  roles:
+    - webapp

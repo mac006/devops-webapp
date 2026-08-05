@@ -1,43 +1,58 @@
 pipeline {
     agent any
 
+    environment {
+        ANSIBLE_CONFIG = "${WORKSPACE}/ansible/ansible.cfg"
+    }
+
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Ansible Version') {
+        stage('Verify Tools') {
             steps {
-                sh 'ansible --version'
+                sh '''
+                    set -eux
+
+                    ansible --version
+                    ansible-playbook --version
+                '''
+            }
+        }
+
+        stage('Inventory Check') {
+            steps {
+                sh '''
+                    set -eux
+
+                    cd ansible
+                    ansible-inventory --graph
+                '''
+            }
+        }
+
+        stage('Connectivity Test') {
+            steps {
+                sh '''
+                    set -eux
+
+                    cd ansible
+                    ansible all -m ping
+                '''
             }
         }
 
         stage('Syntax Check') {
             steps {
                 sh '''
-                    if [ -f ansible/site.yml ]; then
-                        ansible-playbook --syntax-check ansible/site.yml
-                    elif [ -f site.yml ]; then
-                        ansible-playbook --syntax-check site.yml
-                    else
-                        echo "No Ansible playbook found"
-                        exit 1
-                    fi
-                '''
-            }
-        }
+                    set -eux
 
-        stage('Ansible Lint') {
-            steps {
-                sh '''
-                    if command -v ansible-lint >/dev/null 2>&1; then
-                        ansible-lint ansible/site.yml 2>/dev/null || \
-                        ansible-lint site.yml
-                    else
-                        echo "ansible-lint not installed; skipping"
-                    fi
+                    cd ansible
+                    ansible-playbook --syntax-check site.yml
                 '''
             }
         }
@@ -45,14 +60,20 @@ pipeline {
         stage('Deploy') {
             steps {
                 sh '''
-                    if [ -f ansible/site.yml ]; then
-                        ansible-playbook ansible/site.yml
-                    elif [ -f site.yml ]; then
-                        ansible-playbook site.yml
-                    else
-                        echo "No Ansible playbook found"
-                        exit 1
-                    fi
+                    set -eux
+
+                    cd ansible
+                    ansible-playbook site.yml
+                '''
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                sh '''
+                    set -eux
+
+                    curl -f http://192.168.0.200/
                 '''
             }
         }
@@ -62,8 +83,13 @@ pipeline {
         success {
             echo 'CI/CD pipeline completed successfully.'
         }
+
         failure {
-            echo 'CI/CD pipeline failed.'
+            echo 'CI/CD pipeline FAILED.'
+        }
+
+        always {
+            echo 'Pipeline finished.'
         }
     }
 }
